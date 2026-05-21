@@ -1,0 +1,42 @@
+services:
+  mysql:
+    image: postgres:18
+    container_name: grafana-postgres
+    environment:
+      MYSQL_ROOT_PASSWORD: postgres
+    ports:
+      - "3316:3306"
+    volumes:
+      - ./postgres-data:/var/lib/postgres
+
+  zipkin:
+    image: 'openzipkin/zipkin:latest'
+    ports:
+      - '9411:9411'
+
+  my-prometheus:
+    image: prom/prometheus
+    container_name: my-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  my-grafana:
+    image: grafana/grafana
+    container_name: my_grafana
+    pull_policy: always
+    restart: unless-stopped
+    user: root
+    volumes:
+      - ./docker/grafana:/var/lib/grafana
+    environment:
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=false
+      - GF_SERVER_DOMAIN=localhost
+      - GF_LOG_MODE=console file
+      - GF_LOG_FILTERS=alerting:debug provisioning:debug
+    ports:
+      - "3000:3000"
