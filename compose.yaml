@@ -1,18 +1,75 @@
 services:
-  mysql:
+
+  postgres:
     image: postgres:18
-    container_name: grafana-postgres
+    container_name: postgres-db
+
     environment:
-      MYSQL_ROOT_PASSWORD: postgres
+      POSTGRES_DB: vaudoise
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: lambda
+
     ports:
-      - "3316:3306"
+      - "5432:5432"
+
     volumes:
-      - ./postgres-data:/var/lib/postgres
+      - ./postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    restart: unless-stopped
 
   zipkin:
-    image: 'openzipkin/zipkin:latest'
-    ports:
-      - '9411:9411'
+      image: 'openzipkin/zipkin:latest'
+      container_name: zipkin
+      ports:
+        - '9411:9411'
+      healthcheck:
+        test: [ "CMD", "wget", "--spider", "-q", "http://localhost:9411/health" ]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
+
+  springboot-app:
+      build: .
+
+      container_name: observability-grafana
+
+      depends_on:
+        postgres:
+          condition: service_healthy
+        zipkin:
+          condition: service_healthy
+      ports:
+        - "8081:8081"
+
+      environment:
+
+        SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/vaudoise
+        SPRING_DATASOURCE_USERNAME: postgres
+        SPRING_DATASOURCE_PASSWORD: lambda
+        SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+
+        SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+        SPRING_JPA_HIBERNATE_DDL_AUTO: update
+        SPRING_JPA_SHOW_SQL: "true"
+
+        SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: "true"
+
+        MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "*"
+        MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: "always"
+
+        MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED: "true"
+        MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
+
+        MANAGEMENT_TRACING_SAMPLING_PROBABILITY: 1.0
+        MANAGEMENT_TRACING_EXPORT_ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+
+      restart: unless-stopped
 
   my-prometheus:
     image: prom/prometheus

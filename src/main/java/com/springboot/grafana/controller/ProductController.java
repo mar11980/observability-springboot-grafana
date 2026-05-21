@@ -3,19 +3,24 @@ package com.springboot.grafana.controller;
 import com.springboot.grafana.entity.Product;
 import com.springboot.grafana.model.Post;
 import com.springboot.grafana.repository.ProductRepository;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Objects;
 
 @RestController
 @Slf4j
+@SuppressWarnings("NullableProblems")
 public class ProductController {
 
     private final ProductRepository productRepository;
@@ -47,5 +52,17 @@ public class ProductController {
             log.error("No posts found in remote service..");
         log.info("Get all posts from remote service");
         return response.getBody();
+    }
+
+    @PostMapping("/product")
+    public ResponseEntity<Product> createProduct(@RequestBody @Valid Product dto) {
+
+        Product productSaved = productRepository.save(dto);
+
+        URI location = URI.create("/product/" + productSaved.getId());
+
+        return ResponseEntity
+                .created(location)
+                .body(productSaved);
     }
 }
