@@ -22,6 +22,21 @@ services:
 
     restart: unless-stopped
 
+  my-tempo:
+    image: grafana/tempo
+    container_name: my-tempo
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:3200/ready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./docker/tempo/tempo.yml:/etc/tempo.yaml:ro
+      - ./docker/tempo/tempo-data:/tmp/tempo
+    ports:
+      - "3200:3200"   # Tempo HTTP API
+
   zipkin:
       image: 'openzipkin/zipkin:latest'
       container_name: zipkin
@@ -33,19 +48,27 @@ services:
         timeout: 5s
         retries: 5
 
+  my-loki:
+    image: grafana/loki:main
+    container_name: loki
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:3100/ready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - '3100:3100'
 
-  springboot-app:
+  my-product-service:
       build: .
-
       container_name: observability-grafana
-
       depends_on:
         postgres:
           condition: service_healthy
         zipkin:
           condition: service_healthy
       ports:
-        - "8081:8081"
+        - "8082:8082"
 
       environment:
 
@@ -86,6 +109,9 @@ services:
     pull_policy: always
     restart: unless-stopped
     user: root
+    depends_on:
+      - my-loki
+      - my-tempo
     volumes:
       - ./docker/grafana:/var/lib/grafana
     environment:

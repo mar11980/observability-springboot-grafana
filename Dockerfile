@@ -4,6 +4,6 @@ ARG JAR_FILE=target/*.jar
 
 COPY ./target/grafana-0.0.1-SNAPSHOT.jar springbootgrafana.jar
 
-EXPOSE 8081
+EXPOSE 8082
 
 ENTRYPOINT ["java", "-jar", "springbootgrafana.jar"]

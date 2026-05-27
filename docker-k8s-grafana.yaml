@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-k8s-product-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-k8s-product-service
+  template:
+    metadata:
+      labels:
+        app: my-k8s-product-service
+    spec:
+      containers:
+        - name: my-k8s-product-service
+          image: grafana-my-product-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8082
